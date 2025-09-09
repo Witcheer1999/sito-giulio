@@ -8,3 +8,7 @@ description: A crisp derivation + a clean implementation.
 # Logistic Regression
 
 Content…
+
+$X$
+
+$$X$$
