@@ -19,6 +19,7 @@
       <p class="mt-2 text-neutral-400 text-sm">software engineer · writer · researcher</p>
       <p class="mt-2 text-neutral-400 text-sm">mathematics · machine learning · web performance</p>
 
+      <!-- NEW: small presentation paragraph -->
       <p class="mt-6 text-neutral-300 leading-relaxed">
         I write about practical mathematics for machine learning, clean implementations,
         and performance-minded engineering. This is a quiet place for notes, derivations,
@@ -31,7 +32,11 @@
     <!-- Title row + compact toolbar -->
     <section class="mb-3 flex items-center justify-between gap-4">
       <h2 class="text-2xl font-semibold">writings</h2>
+
+      <!-- results count -->
       <span id="count" class="text-xs bg-neutral-900 border border-neutral-800 rounded px-2 py-1 tabular-nums">0</span>
+
+      <!-- mobile filters toggle -->
       <button id="toggleFilters"
               class="sm:hidden border border-neutral-700 rounded px-3 py-1.5 text-sm hover:bg-neutral-900"
               aria-expanded="false" aria-controls="filters">
@@ -39,7 +44,7 @@
       </button>
     </section>
 
-    <!-- Filters -->
+    <!-- Filters (improved UX) -->
     <section id="filters"
              class="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3 sm:items-end sm:grid-cols-[1fr_1fr] lg:grid-cols-[1fr_1fr_auto_auto_auto]">
       <label class="block">
@@ -95,14 +100,10 @@
     const $ = id => document.getElementById(id);
     const state = { posts: [] };
 
-    // 🔒 Hardcoded post files (relative to /posts/)
-    const FILES = [
-      "2025-05-03-logistic-regression.md",
-      "2025-07-05-rnn-from-scratch.md"
-    ];
-
     // --- helpers ---
-    const debounce = (fn, ms=200) => { let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; };
+    const debounce = (fn, ms=200) => {
+      let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); };
+    };
 
     // Parse front-matter: returns {meta, body}
     function parseFrontMatter(text) {
@@ -206,33 +207,19 @@
     }
 
     async function loadPosts() {
-      // Fetch each file from /posts/, parse front matter, and build the list
-      const fetched = await Promise.all(FILES.map(async file => {
-        try {
-          const text = await fetch('posts/' + file + '?cache=' + Date.now()).then(r=>{
-            if (!r.ok) throw new Error('HTTP ' + r.status);
-            return r.text();
-          });
-          const { meta } = parseFrontMatter(text);
-          return {
-            file,
-            title: meta.title || file.replace('.md',''),
-            date: meta.date || new Date().toISOString().slice(0,10),
-            tags: Array.isArray(meta.tags) ? meta.tags : (meta.tags ? String(meta.tags).split(',').map(s=>s.trim()) : []),
-            description: meta.description || ''
-          };
-        } catch (e) {
-          // Graceful fallback if a file is missing or malformed
-          return {
-            file,
-            title: file.replace('.md',''),
-            date: new Date().toISOString().slice(0,10),
-            tags: [],
-            description: ''
-          };
-        }
+      const manifest = await fetch('posts/_manifest.json').then(r=>r.json());
+      const files = manifest.posts || [];
+      const fetched = await Promise.all(files.map(async file => {
+        const text = await fetch('posts/' + file + '?cache=' + Date.now()).then(r=>r.text());
+        const { meta } = parseFrontMatter(text);
+        return {
+          file,
+          title: meta.title || file.replace('.md',''),
+          date: meta.date || new Date().toISOString().slice(0,10),
+          tags: Array.isArray(meta.tags) ? meta.tags : (meta.tags ? String(meta.tags).split(',').map(s=>s.trim()) : []),
+          description: meta.description || ''
+        };
       }));
-
       fetched.sort((a,b)=> new Date(b.date)-new Date(a.date));
       state.posts = fetched;
       populateTagFilter(fetched);
